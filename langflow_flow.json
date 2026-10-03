@@ -1,0 +1,222 @@
+{
+  "id": "asisten-ketua-rt-flow",
+  "name": "Asisten Ketua RT — RAG Flow",
+  "description": "RAG pipeline untuk konsultasi Pergub DKI Jakarta No. 22/2022 menggunakan IBM watsonx.ai Granite 3 8B",
+  "data": {
+    "nodes": [
+      {
+        "id": "ChatInput-1",
+        "type": "genericNode",
+        "position": { "x": 100, "y": 300 },
+        "data": {
+          "id": "ChatInput-1",
+          "type": "ChatInput",
+          "node": {
+            "display_name": "Chat Input",
+            "description": "Menerima pertanyaan dari Ketua RT",
+            "base_classes": ["Message"],
+            "template": {
+              "_type": "Component",
+              "input_value": {
+                "type": "str",
+                "required": false,
+                "placeholder": "Ketik pertanyaan...",
+                "list": false,
+                "show": true,
+                "value": "",
+                "name": "input_value",
+                "display_name": "Pertanyaan",
+                "advanced": false,
+                "info": "Pertanyaan seputar peran dan tanggung jawab Ketua RT"
+              },
+              "should_store_message": {
+                "type": "bool",
+                "required": false,
+                "placeholder": "",
+                "list": false,
+                "show": true,
+                "value": true,
+                "name": "should_store_message",
+                "display_name": "Simpan Pesan",
+                "advanced": true,
+                "info": ""
+              }
+            }
+          }
+        }
+      },
+      {
+        "id": "Prompt-1",
+        "type": "genericNode",
+        "position": { "x": 500, "y": 300 },
+        "data": {
+          "id": "Prompt-1",
+          "type": "Prompt",
+          "node": {
+            "display_name": "Prompt Template",
+            "description": "Template prompt untuk Asisten Ketua RT",
+            "base_classes": ["Message"],
+            "template": {
+              "_type": "Component",
+              "template": {
+                "type": "prompt",
+                "required": true,
+                "placeholder": "",
+                "list": false,
+                "show": true,
+                "value": "Anda adalah asisten digital khusus untuk Ketua RT di DKI Jakarta. Bantu Ketua RT memahami peran, tugas, wewenang, dan tanggung jawab mereka berdasarkan Pergub DKI Jakarta No. 22 Tahun 2022.\n\nPanduan menjawab:\n1. Gunakan bahasa yang ramah dan mudah dipahami.\n2. Sebutkan PASAL dan AYAT terkait sebagai dasar hukum.\n3. Berikan langkah praktis yang bisa langsung dilakukan.\n\nPertanyaan Ketua RT: {input_value}\n\nJawaban:",
+                "name": "template",
+                "display_name": "Template",
+                "advanced": false,
+                "info": ""
+              }
+            }
+          }
+        }
+      },
+      {
+        "id": "WatsonxLLM-1",
+        "type": "genericNode",
+        "position": { "x": 900, "y": 300 },
+        "data": {
+          "id": "WatsonxLLM-1",
+          "type": "CustomComponent",
+          "node": {
+            "display_name": "IBM watsonx.ai Granite",
+            "description": "Memanggil IBM watsonx.ai dengan model Granite 3 8B Instruct",
+            "base_classes": ["Message", "Text"],
+            "template": {
+              "_type": "Component",
+              "code": {
+                "type": "code",
+                "required": true,
+                "placeholder": "",
+                "list": false,
+                "show": false,
+                "value": "from langflow.custom import Component\nfrom langflow.schema.message import Message\nfrom langflow.io import MessageInput, SecretStrInput, StrInput, IntInput, Output\n\nclass WatsonxGraniteComponent(Component):\n    display_name = 'IBM watsonx.ai Granite'\n    description = 'Generate teks menggunakan IBM Granite 3 8B via watsonx.ai'\n    icon = 'custom_components'\n\n    inputs = [\n        MessageInput(name='input_value', display_name='Input'),\n        SecretStrInput(name='api_key', display_name='IBM API Key', required=True),\n        StrInput(name='project_id', display_name='Project ID', required=True),\n        StrInput(name='model_id', display_name='Model ID', value='ibm/granite-3-8b-instruct'),\n        IntInput(name='max_new_tokens', display_name='Max Tokens', value=800),\n    ]\n\n    outputs = [\n        Output(display_name='Jawaban', name='output', method='generate'),\n    ]\n\n    def generate(self) -> Message:\n        from ibm_watsonx_ai.foundation_models import ModelInference\n        from ibm_watsonx_ai.credentials import Credentials\n\n        prompt = self.input_value.text if hasattr(self.input_value, 'text') else str(self.input_value)\n\n        model = ModelInference(\n            model_id=self.model_id,\n            credentials=Credentials(\n                url='https://us-south.ml.cloud.ibm.com',\n                api_key=self.api_key\n            ),\n            project_id=self.project_id,\n            params={\n                'max_new_tokens': self.max_new_tokens,\n                'temperature': 0.2,\n                'repetition_penalty': 1.1\n            }\n        )\n        answer = model.generate_text(prompt=prompt)\n        return Message(text=answer)\n",
+                "name": "code",
+                "display_name": "Code",
+                "advanced": false,
+                "info": ""
+              },
+              "api_key": {
+                "type": "str",
+                "required": true,
+                "placeholder": "",
+                "list": false,
+                "show": true,
+                "value": "",
+                "name": "api_key",
+                "display_name": "IBM API Key",
+                "advanced": false,
+                "info": "IBM watsonx.ai API Key",
+                "password": true
+              },
+              "project_id": {
+                "type": "str",
+                "required": true,
+                "placeholder": "",
+                "list": false,
+                "show": true,
+                "value": "",
+                "name": "project_id",
+                "display_name": "Project ID",
+                "advanced": false,
+                "info": "IBM watsonx.ai Project ID"
+              },
+              "model_id": {
+                "type": "str",
+                "required": false,
+                "placeholder": "",
+                "list": false,
+                "show": true,
+                "value": "ibm/granite-3-8b-instruct",
+                "name": "model_id",
+                "display_name": "Model ID",
+                "advanced": false,
+                "info": ""
+              },
+              "max_new_tokens": {
+                "type": "int",
+                "required": false,
+                "placeholder": "",
+                "list": false,
+                "show": true,
+                "value": 800,
+                "name": "max_new_tokens",
+                "display_name": "Max Tokens",
+                "advanced": true,
+                "info": ""
+              }
+            }
+          }
+        }
+      },
+      {
+        "id": "ChatOutput-1",
+        "type": "genericNode",
+        "position": { "x": 1300, "y": 300 },
+        "data": {
+          "id": "ChatOutput-1",
+          "type": "ChatOutput",
+          "node": {
+            "display_name": "Chat Output",
+            "description": "Menampilkan jawaban asisten",
+            "base_classes": ["Message"],
+            "template": {
+              "_type": "Component",
+              "input_value": {
+                "type": "str",
+                "required": false,
+                "placeholder": "",
+                "list": false,
+                "show": true,
+                "value": "",
+                "name": "input_value",
+                "display_name": "Jawaban",
+                "advanced": false,
+                "info": ""
+              },
+              "should_store_message": {
+                "type": "bool",
+                "required": false,
+                "placeholder": "",
+                "list": false,
+                "show": true,
+                "value": true,
+                "name": "should_store_message",
+                "display_name": "Simpan Pesan",
+                "advanced": true,
+                "info": ""
+              }
+            }
+          }
+        }
+      }
+    ],
+    "edges": [
+      {
+        "id": "edge-1",
+        "source": "ChatInput-1",
+        "target": "Prompt-1",
+        "sourceHandle": "ChatInput-1-output-ChatInput-Message",
+        "targetHandle": "Prompt-1-input-template-input_value"
+      },
+      {
+        "id": "edge-2",
+        "source": "Prompt-1",
+        "target": "WatsonxLLM-1",
+        "sourceHandle": "Prompt-1-output-Prompt-Message",
+        "targetHandle": "WatsonxLLM-1-input-input_value-Message"
+      },
+      {
+        "id": "edge-3",
+        "source": "WatsonxLLM-1",
+        "target": "ChatOutput-1",
+        "sourceHandle": "WatsonxLLM-1-output-output-Message",
+        "targetHandle": "ChatOutput-1-input-input_value-Message"
+      }
+    ],
+    "viewport": { "x": 0, "y": 0, "zoom": 0.8 }
+  }
+}
