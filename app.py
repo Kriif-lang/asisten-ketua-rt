@@ -175,7 +175,7 @@ with tab1:
                     try:
                         import time
                         from google.genai import types
-                        model_name = get_secret("GOOGLE_AI_MODEL", "gemini-3.8-flash")
+                        model_name = get_secret("GOOGLE_AI_MODEL", "gemini-2.5-flash")
                         history = []
                         for msg in st.session_state.messages[:-1]:
                             role = "user" if msg["role"] == "user" else "model"
