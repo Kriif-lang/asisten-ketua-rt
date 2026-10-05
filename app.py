@@ -55,13 +55,14 @@ def load_pergub():
 
 
 @st.cache_resource
-def get_gemini_model():
+def get_gemini_client():
     api_key = get_secret("GOOGLE_AI_API_KEY")
     if not api_key:
-        return None
+        return None, None
     try:
-        import google.generativeai as genai
-        genai.configure(api_key=api_key)
+        from google import genai
+        from google.genai import types
+        client = genai.Client(api_key=api_key)
         pergub = load_pergub()
         system_prompt = f"""Kamu adalah Asisten AI untuk Ketua RT di DKI Jakarta.
 Tugasmu menjawab pertanyaan seputar tugas, wewenang, dan administrasi RT/RW berdasarkan Peraturan Gubernur DKI Jakarta Nomor 22 Tahun 2022.
@@ -75,15 +76,10 @@ Berikut isi lengkap Pergub No. 22/2022 sebagai referensi:
 
 {pergub}
 """
-        model = genai.GenerativeModel(
-            model_name=get_secret("GOOGLE_AI_MODEL", "gemini-1.5-flash"),
-            system_instruction=system_prompt,
-            generation_config={"temperature": 0.1}
-        )
-        return model
+        return client, system_prompt
     except Exception as e:
         st.error(f"Gagal menghubungkan ke Google Gemini: {e}")
-        return None
+        return None, None
 
 
 @st.cache_resource
@@ -91,7 +87,7 @@ def get_composio():
     return ComposioOrchestrator()
 
 
-model = get_gemini_model()
+gemini_client, system_prompt = get_gemini_client()
 composio_engine = get_composio()
 
 # Header
@@ -104,7 +100,7 @@ with st.sidebar:
     st.caption("Platform Digital RT/RW DKI Jakarta")
     st.divider()
     st.markdown("#### Status Sistem")
-    if model:
+    if gemini_client:
         st.success("Google Gemini: Terhubung ✅")
     else:
         st.error("Google Gemini: Tidak terhubung ❌")
@@ -171,16 +167,28 @@ with tab1:
             and st.session_state.messages[-1]["role"] == "user"):
         user_text = st.session_state.messages[-1]["content"]
         with st.chat_message("assistant"):
-            if not model:
+            if not gemini_client:
                 answer = "Maaf, Google Gemini tidak terhubung. Pastikan `GOOGLE_AI_API_KEY` sudah dikonfigurasi."
                 st.markdown(answer)
             else:
                 with st.spinner("Mencari referensi Pergub 22/2022..."):
                     try:
-                        # Buat atau lanjutkan sesi chat
-                        if st.session_state.chat_session is None:
-                            st.session_state.chat_session = model.start_chat(history=[])
-                        response = st.session_state.chat_session.send_message(user_text)
+                        from google.genai import types
+                        model_name = get_secret("GOOGLE_AI_MODEL", "gemini-1.5-flash")
+                        # Bangun riwayat chat untuk konteks
+                        history = []
+                        for msg in st.session_state.messages[:-1]:
+                            role = "user" if msg["role"] == "user" else "model"
+                            history.append(types.Content(role=role, parts=[types.Part(text=msg["content"])]))
+                        history.append(types.Content(role="user", parts=[types.Part(text=user_text)]))
+                        response = gemini_client.models.generate_content(
+                            model=model_name,
+                            contents=history,
+                            config=types.GenerateContentConfig(
+                                system_instruction=system_prompt,
+                                temperature=0.1
+                            )
+                        )
                         answer = response.text
                     except Exception as e:
                         answer = f"Maaf, terjadi kesalahan: {e}"
