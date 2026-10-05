@@ -5,8 +5,9 @@ from fpdf import FPDF
 from dotenv import load_dotenv
 
 project_dir = os.path.dirname(os.path.abspath(__file__))
-os.environ["COMPOSIO_CACHE_DIR"] = os.path.join(project_dir, ".composio")
-os.makedirs(os.environ["COMPOSIO_CACHE_DIR"], exist_ok=True)
+composio_cache = os.path.join(project_dir, ".composio")
+os.makedirs(composio_cache, exist_ok=True)
+os.environ["COMPOSIO_CACHE_DIR"] = composio_cache
 
 load_dotenv()
 
