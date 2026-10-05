@@ -174,7 +174,7 @@ with tab1:
                 with st.spinner("Mencari referensi Pergub 22/2022..."):
                     try:
                         from google.genai import types
-                        model_name = get_secret("GOOGLE_AI_MODEL", "gemini-1.5-flash")
+                        model_name = get_secret("GOOGLE_AI_MODEL", "gemini-2.0-flash")
                         # Bangun riwayat chat untuk konteks
                         history = []
                         for msg in st.session_state.messages[:-1]:
