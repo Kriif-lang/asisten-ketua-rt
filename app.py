@@ -173,23 +173,30 @@ with tab1:
             else:
                 with st.spinner("Mencari referensi Pergub 22/2022..."):
                     try:
+                        import time
                         from google.genai import types
                         model_name = get_secret("GOOGLE_AI_MODEL", "gemini-3.8-flash")
-                        # Bangun riwayat chat untuk konteks
                         history = []
                         for msg in st.session_state.messages[:-1]:
                             role = "user" if msg["role"] == "user" else "model"
                             history.append(types.Content(role=role, parts=[types.Part(text=msg["content"])]))
                         history.append(types.Content(role="user", parts=[types.Part(text=user_text)]))
-                        response = gemini_client.models.generate_content(
-                            model=model_name,
-                            contents=history,
-                            config=types.GenerateContentConfig(
-                                system_instruction=system_prompt,
-                                temperature=0.1
-                            )
-                        )
-                        answer = response.text
+                        cfg = types.GenerateContentConfig(system_instruction=system_prompt, temperature=0.1)
+                        answer = None
+                        for attempt in range(3):
+                            try:
+                                response = gemini_client.models.generate_content(
+                                    model=model_name, contents=history, config=cfg
+                                )
+                                answer = response.text
+                                break
+                            except Exception as e:
+                                if "503" in str(e) and attempt < 2:
+                                    time.sleep(3)
+                                else:
+                                    raise e
+                        if not answer:
+                            answer = "Maaf, server sedang sibuk. Coba lagi dalam beberapa detik."
                     except Exception as e:
                         answer = f"Maaf, terjadi kesalahan: {e}"
                     st.markdown(answer)
